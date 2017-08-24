@@ -28,10 +28,10 @@ def loadData(folder, fileName):
         f = spc.File(folder + '\\' + fileName)
         ev = f.x
         counts = f.sub[0].y
-    elif fileName.endswith(".txt") or fileName.endswith(".csv") or fileName.endswith(".PRN") or fileName.endswith(".prn"):
+    elif fileName.endswith(".CSV") or fileName.endswith(".csv") or fileName.endswith(".PRN") or fileName.endswith(".prn"):
         ev, counts = np.genfromtxt(folder + '\\' + fileName, skip_footer=1, unpack=True, usecols =(0,1))  #load data from text file
     else:
-        raise Exception
+        raise FileTypeError(fileName)
     
     return ev, counts
 
@@ -61,13 +61,14 @@ def PLFit(folder, fileName, bestFitFile):
         Spectrum_fit.append(fitFunc(e, bestFitParameters[0], bestFitParameters[1], bestFitParameters[2], bestFitParameters[3], bestFitParameters[4], bestFitParameters[5], bestFitParameters[6], bestFitParameters[7], bestFitParameters[8],bestFitParameters[9],bestFitParameters[10]))
 
     bestFitParameters.resize(len(bestFitParameters)+5)
+    ### Compute and store peak maxima and global maxima
     bestFitParameters[11] = (bestFitParameters[0]*bestFitParameters[1])/(2*np.pi*(bestFitParameters[1]/2)**2)
     bestFitParameters[12] = (bestFitParameters[3]*bestFitParameters[4])/(2*np.pi*(bestFitParameters[4]/2)**2)
     bestFitParameters[13] = (bestFitParameters[6]*bestFitParameters[7])/(2*np.pi*(bestFitParameters[7]/2)**2)
     bestFitParameters[14] = max(Spectrum_fit)
     bestFitParameters[15] = eV[Spectrum_fit.index(max(Spectrum_fit))]
     
-# Why all this nonsense is here: https://stackoverflow.com/questions/21203907/numpy-savetxt-heterogenous-data
+    # Why all this nonsense is here: https://stackoverflow.com/questions/21203907/numpy-savetxt-heterogenous-data
     name = np.array(fileName)
     dt = np.dtype([('name', name.dtype.str)] + [('data', bestFitParameters.dtype.str, bestFitParameters.shape[0])])
     temp = np.empty(1, dtype=dt)
@@ -83,9 +84,9 @@ def PLFit(folder, fileName, bestFitFile):
     bestFitParameters.resize(len(eV))
     
     if fileName.endswith(".spc") or fileName.endswith('.SPC'):
-        np.savetxt(folder + '\\' + fileName.split('.')[0] + '.txt', np.transpose([eV, counts, Spectrum_fit, A, B, A_prime, line, bestFitParameters]), delimiter = '\t', fmt='%.6f')# save to text file
+        np.savetxt(folder + '\\' + fileName.split('.')[0] + '.txt', np.transpose([eV, counts, Spectrum_fit, A, B, A_prime, line, bestFitParameters]), delimiter = '\t', fmt='%.6f', header= 'eV\tCounts\tFull Fit\tA-Fit\tA Fit\tB Fit\t Linear BG\tFit Params')# save to text file
     else:
-        np.savetxt(folder + '\\' + fileName, np.transpose([eV, counts, Spectrum_fit, A, B, A_prime, line, bestFitParameters]), delimiter = '\t', fmt='%.6f')# save to text file
+        np.savetxt(folder + '\\' + fileName, np.transpose([eV, counts, Spectrum_fit, A, B, A_prime, line, bestFitParameters]), delimiter = '\t', fmt='%.6f', header= 'eV\tCounts\tFull Fit\tA-Fit\tA Fit\tB Fit\t Linear BG\tFit Params')# save to text file
     
     data = [counts, Spectrum_fit, A, B, A_prime, line]
     plotData(eV, data, fileName, folder)
@@ -102,11 +103,26 @@ def plotData(x, data, fileName, folder):
     exp.parameters()['width'] = 640
     exp.export(folder + '\\' + fileName.split('.')[0] + '.png')
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class FileTypeError(Error):
+    """Exception raised for errors due to bad file types.
+
+    Attributes:
+        file -- offending file
+        type -- what kind of file is it?
+    """
+
+    def __init__(self, file):
+        self.file = file
+        self.type = file.split('.')[1]
 
  
 
 if __name__ == "__main__":   
-    with open('Files_Peak_Analysis' + '\\FitParams.txt', 'w') as fHandle:
+    with open('test_data' + '\\FitParams.txt', 'w') as fHandle:
         fHandle.write('FileName\tA-Intensity\tA-Width\tA-PeakEnergy\tAIntensity\tAWidth\tAPeakEnergy\tBIntensity\tBWidth\tBPeakEnergy\tLinearM\tLinearB\tA-Max\tAMax\tBMax\tAbsoluteMaxIntensity\tAbsoluteMaxEnergy\n')    
-    with open('Files_Peak_Analysis' + '\\FitParams.txt', 'ab') as fHandle:
-        PLFit('Files_Peak_Analysis', 'test.spc', fHandle) #for testing purpose.
+    with open('test_data' + '\\FitParams.txt', 'ab') as fHandle:
+        PLFit('test_data', 'test_SPC.SPC', fHandle) #for testing purpose.
